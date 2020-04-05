@@ -1,7 +1,3 @@
 type Query {
-  listener(id: ID!): Listener
   liteners: [Listener!]!
-
-  channel(id: ID!): Channel!
-  channels: [Channel!]!
 }

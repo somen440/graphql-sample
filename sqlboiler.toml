@@ -1,7 +1,7 @@
 [mysql]
-  dbname  = "test_database"
-  host    = "localhost"
-  port    = 3306
-  user    = "root"
-  pass    = "root"
-  sslmode = "false"
+dbname  = "test_database"
+host    = "localhost"
+port    = 30306
+user    = "root"
+pass    = "root"
+sslmode = "false"

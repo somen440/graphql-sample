@@ -1,0 +1,10 @@
+type Listener {
+  id: ID!
+
+  name: String!
+
+  followed: [Channel!]!
+
+  createdAt: Time!
+  updatedAt: Time!
+}

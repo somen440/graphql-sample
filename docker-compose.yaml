@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+    db:
+        image: mysql:5.7
+        container_name: gsl_db
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: test_database
+            MYSQL_USER: user
+            MYSQL_PASSWORD: password
+            TZ: 'Asia/Tokyo'
+        volumes:
+            - ./docker/mysql/mysql.cnf:/etc/mysql/conf.d/mysql.cnf
+            - ./log:/var/log/mysql
+            - ./docker/mysql/initdb.d:/docker-entrypoint-initdb.d
+
+    pma:
+        image: phpmyadmin/phpmyadmin
+        environment:
+            - PMA_ARBITRARY=1
+            - PMA_HOST=db
+            - PMA_USER=root
+            - PMA_PASSWORD=root
+        ports:
+            - 8888:80
+
+volumes:
+    mysql-data:
+        driver: local

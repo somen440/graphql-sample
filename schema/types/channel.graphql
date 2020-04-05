@@ -1,0 +1,8 @@
+type Channel {
+    id: ID!
+
+    name: String!
+
+    createdAt: Time!
+    updatedAt: Time!
+}

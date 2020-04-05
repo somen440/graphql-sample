@@ -21,7 +21,7 @@ func ChannelSlice(db *sqlx.DB, w http.ResponseWriter, r *http.Request, next http
 				convertedKeys[index] = key
 			}
 			followedChannels, err := models.FollowedChannels(
-				qm.Select("distinct channel_id, listener_id"),
+				qm.Select("channel_id, listener_id"),
 				qm.WhereIn("listener_id in ?", convertedKeys...),
 			).All(r.Context(), db)
 
@@ -29,9 +29,21 @@ func ChannelSlice(db *sqlx.DB, w http.ResponseWriter, r *http.Request, next http
 				return [][]*models.Channel{}, []error{err}
 			}
 
-			channelIDs := make([]interface{}, len(followedChannels))
-			for i, fc := range followedChannels {
-				channelIDs[i] = fc.ChannelID
+			contains := func(s []interface{}, e string) bool {
+				for _, v := range s {
+					if e == v {
+						return true
+					}
+				}
+				return false
+			}
+
+			channelIDs := []interface{}{}
+			for _, fc := range followedChannels {
+				if contains(channelIDs, fc.ChannelID) {
+					continue
+				}
+				channelIDs = append(channelIDs, fc.ChannelID)
 			}
 
 			channels, err := models.Channels(

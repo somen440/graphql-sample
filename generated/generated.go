@@ -66,6 +66,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Listener func(childComplexity int, id string) int
 		Liteners func(childComplexity int) int
 	}
 }
@@ -82,6 +83,7 @@ type MutationResolver interface {
 	AddListener(ctx context.Context) (*models.Listener, error)
 }
 type QueryResolver interface {
+	Listener(ctx context.Context, id string) (*models.Listener, error)
 	Liteners(ctx context.Context) ([]*models.Listener, error)
 }
 
@@ -170,6 +172,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddListener(childComplexity), true
 
+	case "Query.listener":
+		if e.complexity.Query.Listener == nil {
+			break
+		}
+
+		args, err := ec.field_Query_listener_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Listener(childComplexity, args["id"].(string)), true
+
 	case "Query.liteners":
 		if e.complexity.Query.Liteners == nil {
 			break
@@ -256,6 +270,7 @@ directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITI
 }
 `, BuiltIn: false},
 	&ast.Source{Name: "schema/query.graphql", Input: `type Query {
+  listener(id: ID!): Listener!
   liteners: [Listener!]!
 }
 `, BuiltIn: false},
@@ -303,6 +318,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_listener_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -666,6 +695,47 @@ func (ec *executionContext) _Mutation_addListener(ctx context.Context, field gra
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().AddListener(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.Listener)
+	fc.Result = res
+	return ec.marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListener(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_listener(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_listener_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Listener(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2010,6 +2080,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "listener":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_listener(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "liteners":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

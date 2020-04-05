@@ -1,3 +1,4 @@
 type Query {
+  listener(id: ID!): Listener!
   liteners: [Listener!]!
 }

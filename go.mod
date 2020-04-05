@@ -7,13 +7,13 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1 // indirect
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-chi/chi v4.1.0+incompatible
-	github.com/go-pg/pg/v9 v9.1.5
+	github.com/go-pg/pg/v9 v9.1.5 // indirect
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
-	github.com/oshalygin/gqlgen-pg-todo-example v0.0.0-20200315021604-084ef0133a2a
+	github.com/oshalygin/gqlgen-pg-todo-example v0.0.0-20200315021604-084ef0133a2a // indirect
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/somen440/tone-line/api v0.0.0-20200329001042-0331458f091d // indirect
 	github.com/spf13/afero v1.2.2 // indirect

@@ -1,9 +1,9 @@
-type Listener {
+type Listener @goModel(model: "github.com/somen440/graphql-sample/models.Listener") {
   id: ID!
 
   name: String!
 
-  followed: [Channel!]!
+  followed: [Channel!]! @goField(forceResolver: true)
 
   createdAt: Time!
   updatedAt: Time!

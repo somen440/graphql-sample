@@ -6,23 +6,17 @@ import (
 	"os"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/go-chi/chi"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/somen440/graphql-sample/graph/generated"
-	"github.com/somen440/graphql-sample/graph/resolver"
+	"github.com/jmoiron/sqlx"
+	"github.com/somen440/graphql-sample/dataloaders"
+	"github.com/somen440/graphql-sample/generated"
+	"github.com/somen440/graphql-sample/resolvers"
 )
 
 const defaultPort = "8080"
-
-var (
-	r *resolver.Resolver
-)
-
-func init() {
-	r = &resolver.Resolver{
-		// Db: db,
-	}
-}
 
 func main() {
 	port := os.Getenv("PORT")
@@ -30,11 +24,30 @@ func main() {
 		port = defaultPort
 	}
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: r}))
+	db, err := sqlx.Connect("mysql", "root:root@tcp(localhost:30306)/test_database?parseTime=true")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	r := chi.NewRouter()
+	r.Route("/graphql", func(r chi.Router) {
+		r.Use(dataloaders.NewMiddleware(db)...)
+
+		schema := generated.NewExecutableSchema(generated.Config{
+			Resolvers: &resolvers.Resolver{
+				Db: db,
+			},
+			Directives: generated.DirectiveRoot{},
+			Complexity: generated.ComplexityRoot{},
+		})
+
+		srv := handler.NewDefaultServer(schema)
+		srv.Use(extension.FixedComplexityLimit(300))
+
+		r.Handle("/", srv)
+	})
+	r.Get("/", playground.Handler("GraphQL playground", "/graphql"))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }

@@ -13,7 +13,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/somen440/graphql-sample/graph/model"
+	"github.com/somen440/graphql-sample/models"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -36,6 +36,8 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Channel() ChannelResolver
+	Listener() ListenerResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 }
@@ -68,11 +70,19 @@ type ComplexityRoot struct {
 	}
 }
 
+type ChannelResolver interface {
+	ID(ctx context.Context, obj *models.Channel) (string, error)
+}
+type ListenerResolver interface {
+	ID(ctx context.Context, obj *models.Listener) (string, error)
+
+	Followed(ctx context.Context, obj *models.Listener) ([]*models.Channel, error)
+}
 type MutationResolver interface {
-	AddListener(ctx context.Context) (*model.Listener, error)
+	AddListener(ctx context.Context) (*models.Listener, error)
 }
 type QueryResolver interface {
-	Liteners(ctx context.Context) ([]*model.Listener, error)
+	Liteners(ctx context.Context) ([]*models.Listener, error)
 }
 
 type executableSchema struct {
@@ -231,6 +241,16 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
+	&ast.Source{Name: "schema/directives.graphql", Input: `directive @goModel(model: String, models: [String!]) on OBJECT
+    | INPUT_OBJECT
+    | SCALAR
+    | ENUM
+    | INTERFACE
+    | UNION
+
+directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION
+    | FIELD_DEFINITION
+`, BuiltIn: false},
 	&ast.Source{Name: "schema/mutation.graphql", Input: `type Mutation {
     addListener: Listener!
 }
@@ -245,7 +265,7 @@ var sources = []*ast.Source{
   query: Query
 }
 `, BuiltIn: false},
-	&ast.Source{Name: "schema/types/channel.graphql", Input: `type Channel {
+	&ast.Source{Name: "schema/types/channel.graphql", Input: `type Channel @goModel(model: "github.com/somen440/graphql-sample/models.Channel") {
     id: ID!
 
     name: String!
@@ -254,12 +274,12 @@ var sources = []*ast.Source{
     updatedAt: Time!
 }
 `, BuiltIn: false},
-	&ast.Source{Name: "schema/types/listener.graphql", Input: `type Listener {
+	&ast.Source{Name: "schema/types/listener.graphql", Input: `type Listener @goModel(model: "github.com/somen440/graphql-sample/models.Listener") {
   id: ID!
 
   name: String!
 
-  followed: [Channel!]!
+  followed: [Channel!]! @goField(forceResolver: true)
 
   createdAt: Time!
   updatedAt: Time!
@@ -322,7 +342,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Channel_id(ctx context.Context, field graphql.CollectedField, obj *model.Channel) (ret graphql.Marshaler) {
+func (ec *executionContext) _Channel_id(ctx context.Context, field graphql.CollectedField, obj *models.Channel) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -333,13 +353,13 @@ func (ec *executionContext) _Channel_id(ctx context.Context, field graphql.Colle
 		Object:   "Channel",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
+		return ec.resolvers.Channel().ID(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -356,7 +376,7 @@ func (ec *executionContext) _Channel_id(ctx context.Context, field graphql.Colle
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Channel_name(ctx context.Context, field graphql.CollectedField, obj *model.Channel) (ret graphql.Marshaler) {
+func (ec *executionContext) _Channel_name(ctx context.Context, field graphql.CollectedField, obj *models.Channel) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -390,7 +410,7 @@ func (ec *executionContext) _Channel_name(ctx context.Context, field graphql.Col
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Channel_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Channel) (ret graphql.Marshaler) {
+func (ec *executionContext) _Channel_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.Channel) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -424,7 +444,7 @@ func (ec *executionContext) _Channel_createdAt(ctx context.Context, field graphq
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Channel_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.Channel) (ret graphql.Marshaler) {
+func (ec *executionContext) _Channel_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.Channel) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -458,7 +478,7 @@ func (ec *executionContext) _Channel_updatedAt(ctx context.Context, field graphq
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Listener_id(ctx context.Context, field graphql.CollectedField, obj *model.Listener) (ret graphql.Marshaler) {
+func (ec *executionContext) _Listener_id(ctx context.Context, field graphql.CollectedField, obj *models.Listener) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -469,13 +489,13 @@ func (ec *executionContext) _Listener_id(ctx context.Context, field graphql.Coll
 		Object:   "Listener",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
+		return ec.resolvers.Listener().ID(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -492,7 +512,7 @@ func (ec *executionContext) _Listener_id(ctx context.Context, field graphql.Coll
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Listener_name(ctx context.Context, field graphql.CollectedField, obj *model.Listener) (ret graphql.Marshaler) {
+func (ec *executionContext) _Listener_name(ctx context.Context, field graphql.CollectedField, obj *models.Listener) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -526,7 +546,7 @@ func (ec *executionContext) _Listener_name(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Listener_followed(ctx context.Context, field graphql.CollectedField, obj *model.Listener) (ret graphql.Marshaler) {
+func (ec *executionContext) _Listener_followed(ctx context.Context, field graphql.CollectedField, obj *models.Listener) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -537,13 +557,13 @@ func (ec *executionContext) _Listener_followed(ctx context.Context, field graphq
 		Object:   "Listener",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Followed, nil
+		return ec.resolvers.Listener().Followed(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -555,12 +575,12 @@ func (ec *executionContext) _Listener_followed(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.Channel)
+	res := resTmp.([]*models.Channel)
 	fc.Result = res
-	return ec.marshalNChannel2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐChannelᚄ(ctx, field.Selections, res)
+	return ec.marshalNChannel2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐChannelᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Listener_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Listener) (ret graphql.Marshaler) {
+func (ec *executionContext) _Listener_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.Listener) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -594,7 +614,7 @@ func (ec *executionContext) _Listener_createdAt(ctx context.Context, field graph
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Listener_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.Listener) (ret graphql.Marshaler) {
+func (ec *executionContext) _Listener_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.Listener) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -657,9 +677,9 @@ func (ec *executionContext) _Mutation_addListener(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Listener)
+	res := resTmp.(*models.Listener)
 	fc.Result = res
-	return ec.marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐListener(ctx, field.Selections, res)
+	return ec.marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListener(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_liteners(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -691,9 +711,9 @@ func (ec *executionContext) _Query_liteners(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.Listener)
+	res := resTmp.([]*models.Listener)
 	fc.Result = res
-	return ec.marshalNListener2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐListenerᚄ(ctx, field.Selections, res)
+	return ec.marshalNListener2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListenerᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1830,7 +1850,7 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 var channelImplementors = []string{"Channel"}
 
-func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, obj *model.Channel) graphql.Marshaler {
+func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, obj *models.Channel) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, channelImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -1840,24 +1860,33 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Channel")
 		case "id":
-			out.Values[i] = ec._Channel_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Channel_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "name":
 			out.Values[i] = ec._Channel_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._Channel_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Channel_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -1872,7 +1901,7 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 
 var listenerImplementors = []string{"Listener"}
 
-func (ec *executionContext) _Listener(ctx context.Context, sel ast.SelectionSet, obj *model.Listener) graphql.Marshaler {
+func (ec *executionContext) _Listener(ctx context.Context, sel ast.SelectionSet, obj *models.Listener) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, listenerImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -1882,29 +1911,47 @@ func (ec *executionContext) _Listener(ctx context.Context, sel ast.SelectionSet,
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Listener")
 		case "id":
-			out.Values[i] = ec._Listener_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Listener_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "name":
 			out.Values[i] = ec._Listener_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "followed":
-			out.Values[i] = ec._Listener_followed(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Listener_followed(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "createdAt":
 			out.Values[i] = ec._Listener_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Listener_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -2251,11 +2298,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNChannel2githubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐChannel(ctx context.Context, sel ast.SelectionSet, v model.Channel) graphql.Marshaler {
+func (ec *executionContext) marshalNChannel2githubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐChannel(ctx context.Context, sel ast.SelectionSet, v models.Channel) graphql.Marshaler {
 	return ec._Channel(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNChannel2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Channel) graphql.Marshaler {
+func (ec *executionContext) marshalNChannel2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Channel) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2279,7 +2326,7 @@ func (ec *executionContext) marshalNChannel2ᚕᚖgithubᚗcomᚋsomen440ᚋgrap
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNChannel2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐChannel(ctx, sel, v[i])
+			ret[i] = ec.marshalNChannel2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐChannel(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -2292,7 +2339,7 @@ func (ec *executionContext) marshalNChannel2ᚕᚖgithubᚗcomᚋsomen440ᚋgrap
 	return ret
 }
 
-func (ec *executionContext) marshalNChannel2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐChannel(ctx context.Context, sel ast.SelectionSet, v *model.Channel) graphql.Marshaler {
+func (ec *executionContext) marshalNChannel2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐChannel(ctx context.Context, sel ast.SelectionSet, v *models.Channel) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -2316,11 +2363,11 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) marshalNListener2githubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐListener(ctx context.Context, sel ast.SelectionSet, v model.Listener) graphql.Marshaler {
+func (ec *executionContext) marshalNListener2githubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListener(ctx context.Context, sel ast.SelectionSet, v models.Listener) graphql.Marshaler {
 	return ec._Listener(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNListener2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐListenerᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Listener) graphql.Marshaler {
+func (ec *executionContext) marshalNListener2ᚕᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListenerᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Listener) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2344,7 +2391,7 @@ func (ec *executionContext) marshalNListener2ᚕᚖgithubᚗcomᚋsomen440ᚋgra
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐListener(ctx, sel, v[i])
+			ret[i] = ec.marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListener(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -2357,7 +2404,7 @@ func (ec *executionContext) marshalNListener2ᚕᚖgithubᚗcomᚋsomen440ᚋgra
 	return ret
 }
 
-func (ec *executionContext) marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋgraphᚋmodelᚐListener(ctx context.Context, sel ast.SelectionSet, v *model.Listener) graphql.Marshaler {
+func (ec *executionContext) marshalNListener2ᚖgithubᚗcomᚋsomen440ᚋgraphqlᚑsampleᚋmodelsᚐListener(ctx context.Context, sel ast.SelectionSet, v *models.Listener) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -2650,6 +2697,38 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v inter
 
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	return graphql.MarshalString(v)
+}
+
+func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
